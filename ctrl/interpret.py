@@ -67,6 +67,7 @@ class Interpreter(object):
         self.circle: bool = False
         self.path: str = ''
         self.author: str = ''
+        self.output: bool = True
 
     @staticmethod
     def std_time(s: str) -> int:
@@ -86,6 +87,14 @@ class Interpreter(object):
         for ch, en in replacement.items():
             s = s.replace(ch, en)
         return s
+
+    def std_char_name(self, name: str) -> str:
+        if name in self.char_name_map:
+            return self.char_name_map[name]
+        elif name in name_dict['character']:
+            return name_dict['character'][name]
+        elif name in name_dict['buff_src']:
+            return name_dict['buff_src'][name]
 
     def std_arg(self, dic: dict):
         for k, v in list(dic.items()):
@@ -114,15 +123,16 @@ class Interpreter(object):
                 dic[k] = v
 
     def read_file(self):
-        dirlist = os.listdir('./')
-        filelist = []
-        for dir in dirlist:
-            if dir.endswith('txt'):
-                filelist.append(dir)
-        for i, f in enumerate(filelist):
-            print(f'{i+1:<2}:{f}')
-        index = input('请输入你要处理的文件的序号:')
-        self.path = filelist[int(index)-1]
+        if not self.path:
+            dirlist = os.listdir('./')
+            filelist = []
+            for dir in dirlist:
+                if dir.endswith('txt'):
+                    filelist.append(dir)
+            for i, f in enumerate(filelist):
+                print(f'{i+1:<2}:{f}')
+            index = input('请输入你要处理的文件的序号:')
+            self.path = filelist[int(index)-1]
         self.process_file()
 
     def process_file(self):
@@ -134,7 +144,8 @@ class Interpreter(object):
                     continue
                 for each in command.split(';')[:-1]:
                     cmd_elem = self.process_line(each)
-                    print(cmd_elem)
+                    if self.output:
+                        print(cmd_elem)
                     self.command_case(*cmd_elem)
         folder = os.path.splitext(self.path)[0]
         if not os.path.exists(folder):
@@ -187,7 +198,7 @@ class Interpreter(object):
         name = name_dict['character'][prime[0]]
         [lv_str, cx, a_, e_, q_] = require
         cx, a, e, q = int(cx), int(a_), int(e_), int(q_)
-        asc = lv_str.endswith('T')
+        asc = lv_str.upper().endswith('T')
         lv = int(lv_str[:-1]) if asc else int(lv_str)
         self.characters[name] = Char(name, lv, asc, cx,  a, e, q)
         if n := optional.get('nickname'):
@@ -198,7 +209,7 @@ class Interpreter(object):
 
     def set_weapons(self, prime: List[str], second: str, require: List[str]):
         name = name_dict['weapon'][prime[0]]
-        owner = self.char_name_map[second] if second in self.char_name_map else name_dict['character'][second]
+        owner = self.std_char_name(second)
         lv_str = require[0]
         asc = lv_str.endswith('T')
         lv = int(lv_str[:-1]) if asc else int(lv_str)
@@ -217,7 +228,7 @@ class Interpreter(object):
         goblet = name_dict['stat'][goblet]
         circlet = name_dict['stat'][circlet]
         m = ['HP_CONST', 'ATK_CONST', sands, goblet, circlet]
-        owner = self.char_name_map[second] if second in self.char_name_map else name_dict['character'][second]
+        owner = self.std_char_name(second)
         self.artifacts[owner] = Artifact(piece21, piece22, piece4, m)
         self.artifacts[owner].set_owner(owner)
         if std := optional.get('std'):
@@ -231,12 +242,7 @@ class Interpreter(object):
 
     def create_buff(self, prime: List[str], second: str, require: List[str], optional: Dict[str, str]):
         # find formal name, family, type
-        if second in self.char_name_map:
-            source = self.char_name_map[second]
-        elif second in name_dict['character']:
-            source = name_dict['character'][second]
-        elif second in name_dict['buff_src']:
-            source = name_dict['buff_src'][second]
+        source = self.std_char_name(second)
 
         if prime[0] in name_dict['buff']:
             name = name_dict['buff'][prime[0]]
@@ -266,10 +272,7 @@ class Interpreter(object):
 
     def create_nums(self, cmd: str, prime: List[str], second: str, require: List[str], optional: Dict[str, str]):
         # find formal skill name, family, type
-        if second in self.char_name_map:
-            name = self.char_name_map[second]
-        else:
-            name = name_dict['character'][second]
+        name = self.std_char_name(second)
 
         if prime[0] in name_dict['skill']:
             skill_name = name_dict['skill'][prime[0]]
@@ -300,7 +303,7 @@ class Interpreter(object):
     def create_creations(self, prime: List[str], second: str, require: List[str], optional: Dict[str, str]):
         name = name_dict['create'][prime[0]] \
             if prime[0] in name_dict['create'] else prime[0].upper()
-        source = self.char_name_map[second] if second in self.char_name_map else name_dict['character'][second]
+        source = self.std_char_name(second)
         create_find = source+'->'+name if name not in create_dict else name
         self.std_arg(optional)
         begin = self.std_time(require[0])
@@ -312,8 +315,7 @@ class Interpreter(object):
 
     def switch_person(self, prime: List[str], require: List[str]):
         t = self.std_time(require[0])
-        name = prime[0]
-        name = self.char_name_map[name] if name in self.char_name_map else name_dict['character'][name]
+        name = self.std_char_name(prime[0])
         event = Event(type=EventType.SWITCH, name=name, time=t)
         self.event_que.put(event)
 
@@ -512,7 +514,8 @@ class Interpreter(object):
         self.buff_now.append(buff)
 
     def execute_buff(self):
-        print(self.buff_tmp)
+        if self.output:
+            print(self.buff_tmp)
         self.write_record()
         if self.buff_tmp.type == BuffType.ATTR:
             tar = self.buff_tmp.attr_tar
@@ -532,7 +535,8 @@ class Interpreter(object):
         self.write_record()
 
     def execute_event(self):
-        print(self.event_now)
+        if self.output:
+            print(self.event_now)
         if self.event_now.type == EventType.SWITCH:
             self.do_switch()
         elif self.event_now.type == EventType.CREATION:

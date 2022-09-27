@@ -88,7 +88,7 @@ class Buff(object):
         self.change_info[tar_key] = value
 
     def judge(self, nums) -> bool:
-        if self.num_tar == nums.source or self.num_tar == 'all':
+        if self.num_tar == nums.source or self.num_tar == 'all' or self.num_tar == 'stage':
             return self.func(nums)
         else:
             return False

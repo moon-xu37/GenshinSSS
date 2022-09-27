@@ -3,6 +3,8 @@ import json
 from copy import deepcopy
 from typing import Union, Tuple, Dict, List
 from collections import Counter
+from itertools import permutations
+from math import factorial
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -1035,6 +1037,96 @@ class Plotter(ColorManager):
         self.damage_smooth()
         self.sim()
 
+    def shapley_show(self, data: Dict[Tuple, int]):
+        def shapley(data: Dict[Tuple, int]):
+            contributions = dict.fromkeys(range(4), 0)
+            for order in permutations(range(4), 4):
+                for slice in range(4):
+                    team = tuple(sorted(order[:slice+1]))
+                    if slice != 0:
+                        team_pre = tuple(sorted(order[:slice]))
+                        contributions[order[slice]] += \
+                            (data[team]-data[team_pre])
+                    else:
+                        contributions[order[slice]] += data[team]
+            for member in contributions:
+                contributions[member] /= 24
+            return contributions
+
+        def shapley_matrix(data: Dict[Tuple, int]):
+            mat = np.zeros((4, 4))
+            for i in range(4):
+                for j in range(4):
+                    mat_ij = 0
+                    for team in data:
+                        size_s = len(team)
+                        sum_fac = sum([1/k for k in range(size_s, 5)])
+                        team_i = tuple([k for k in team if k != i])
+                        team_j = tuple([k for k in team if k != j])
+                        team_ij = tuple([k for k in team if k != i and k != j])
+                        v = data.get(team, 0)
+                        v_i = data.get(team_i, 0)
+                        v_j = data.get(team_j, 0)
+                        v_ij = data.get(team_ij, 0)
+                        perm = factorial(size_s-1)*factorial(4-size_s)/24
+                        mat_ij += perm*(v-v_i-v_j+v_ij)*sum_fac
+                    mat[i][j] = mat_ij
+            print(mat)
+            print(mat.sum(axis=1))
+            print(mat.sum())
+            return mat
+
+        def func(pct, val):
+            absolute = int(np.round(pct/100.*sum(val.values())))
+            return "{:.1f}%\n({:d})".format(pct, absolute) if pct > 0 else ''
+
+        con = shapley(data)
+        mat = shapley_matrix(data)
+        invert_name = dict(zip(range(4), self.inter.characters.keys()))
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        colors = [self.get_char_color(invert_name[n]) for n in con.keys()]
+        wedges, texts, autotexts = \
+            ax.pie(con.values(), radius=1, colors=colors,
+                   autopct=lambda pct: func(pct, con),
+                   pctdistance=0.75,
+                   wedgeprops=dict(width=0.5, edgecolor='w'),
+                   textprops=dict(color="w", size='large', weight='heavy'))
+        ax.legend(wedges, [c_trans[invert_name[n]] for n in con.keys()],
+                  loc='upper left')
+        title = '沙普利值分析'
+        ax.set(aspect="equal", title=title)
+        plt.tight_layout()
+        plt.savefig(f'{self.folder}\{title}.jpg', dpi=400, format='jpg')
+        plt.close()
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        label = [c_trans[invert_name[n]] for n in range(4)]
+        heat = np.array(mat)
+        im = ax.imshow(heat, cmap=plt.colormaps['coolwarm'],
+                       norm=mcolors.Normalize(vmin=heat.min(), vmax=heat.max()))
+        cbar = ax.figure.colorbar(im, ax=ax, pad=0.05, shrink=0.7,
+                                  location='bottom', orientation='horizontal')
+        cbar.ax.set_xlabel('Shapley Value')
+        ax.set_xticks(np.arange(heat.shape[0]), labels=label)
+        ax.set_yticks(np.arange(heat.shape[1]), labels=label)
+        ax.tick_params(top=True, bottom=False,
+                       labeltop=True, labelbottom=False)
+        ax.spines[:].set_visible(False)
+        ax.set_xticks(np.arange(heat.shape[1]+1)-.5, minor=True)
+        ax.set_yticks(np.arange(heat.shape[0]+1)-.5, minor=True)
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+        ax.tick_params(which="minor", bottom=False, left=False)
+        for i in range(len(label)):
+            for j in range(len(label)):
+                ax.text(j, i, f'{round(heat[i, j]):,}',
+                        ha='center', va='center', color='black', alpha=0.8)
+        title = '沙普利值矩阵'
+        ax.set_title(title)
+        plt.tight_layout()
+        plt.savefig(f'{self.folder}\{title}.jpg', dpi=400, format='jpg')
+        plt.close()
+
 
 class ExcelWriter(object):
     type_translation = dict(
@@ -1203,9 +1295,10 @@ class ExcelWriter(object):
         with open(f'{self.folder}\\tree.json', 'w', encoding='utf8') as f:
             json.dump(trees, f, skipkeys=True, indent=4, ensure_ascii=False)
 
-    def write_sum(self):
+    def write_sum(self, index: str = '') -> int:
         data = {}
         avg = {}
+        total_sum = 0
         for char_name, dmgs in self.inter.record_dmg.items():
             data[char_name] = {}
             avg[char_name] = {}
@@ -1215,6 +1308,7 @@ class ExcelWriter(object):
                 if type_sum > 0:
                     data[char_name][types] = type_sum
                     avg[char_name][types] = np.zeros(6)
+                    total_sum += type_sum
         for num in self.inter.record_trees:
             if self.start > num.time or self.end < num.time:
                 continue
@@ -1245,19 +1339,21 @@ class ExcelWriter(object):
                     m6 = 1
                 avg[num.source][num.damage_type.name] +=\
                     per*np.array([m1, m2, m3, m4, m5, m6])
-        with open(f'{self.folder}\\sum.csv', 'w', encoding='utf-8-sig', newline='') as file:
+        with open(f'{self.folder}\\sum{index}.csv', 'w', encoding='utf-8-sig', newline='') as file:
             fieldnames = ['发起者', '伤害类型', '数值和',
                           '基础区', '增伤区', '暴击区', '抗性区', '防御区', '反应区']
             writer = csv.writer(file)
             writer.writerow(fieldnames)
             for char_name, dmgs in data.items():
                 for types in dmgs:
-                    s = data[char_name][types]
-                    a = avg[char_name][types]
                     c = c_trans[char_name]
                     t = self.damage_translation[types]
+                    s = data[char_name][types]
+                    a = avg[char_name][types]
                     l = [c, t, s]+list(a)
                     writer.writerow(l)
+            writer.writerow(['总伤害', '', total_sum]+['']*6)
+        return total_sum
 
     def write_merge(self):
         numerics = []
@@ -1274,7 +1370,8 @@ class ExcelWriter(object):
                             set(num.buffed) == set(merge.buffed) and \
                             len(num.root.child) == len(merge.root.child) and \
                             all([num.root.child[i+1] == merge.root.child[i+1] for i in range(len(num.root.child)-1)]):
-                        merge.root.child[0].child.extend(num.root.child[0].child)
+                        merge.root.child[0].child.extend(
+                            num.root.child[0].child)
                         break
                 elif num.type == BuffType.DMG and merge.type == BuffType.DMG:
                     if num.source == merge.source and \

@@ -41,7 +41,7 @@ class Nums(object):
         return self.root.value
 
     def safe_insert(self, panel: Panel, attr: str, key: str, mid_key: str = ''):
-        n: DNode = deepcopy(getattr(panel, attr))
+        n: DNode = panel[attr]
         n.key = 'Entity '+n.key
         try:
             if mid_key:
@@ -73,8 +73,8 @@ class Damage(Nums):
         super().__init__(BuffType.DMG)
         self.init_tree()
         self.damage_type: DamageType = DamageType.NONE
-        self.elem_type: ElementType = ElementType.NONE
-        self.react_type: ReactType = ReactType.NONE
+        self.elem_type:  ElementType = ElementType.NONE
+        self.react_type:   ReactType = ReactType.NONE
 
     def init_tree(self) -> None:
         self.root = DNode('Total Damage', '*')
@@ -233,9 +233,9 @@ class TransDamage(Nums):
         super().__init__(BuffType.ELEMENT)
         self.init_tree()
         self.damage_type: DamageType = DamageType.TRANS
-        self.elem_type: ElementType = ElementType.NONE
-        self.react_type: ReactType = ReactType.NONE
-        self.sub_react: ReactType = ReactType.NONE
+        self.elem_type:  ElementType = ElementType.NONE
+        self.react_type:   ReactType = ReactType.NONE
+        self.sub_react:    ReactType = ReactType.NONE
 
     def init_tree(self):
         self.root = DNode('Total TransDamage', '*')

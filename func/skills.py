@@ -77,7 +77,8 @@ def _auto_generate_heal(proto: Event, info: Dict[str, List[float]], mappings: Li
         event.time = proto.time + time_bias
         event.lv = proto.lv
         event.scaler = info[lv][map['index']]
-        event.args['flat'] = info[lv][map['flat_index']]
+        event.args['flat'] = info[lv][map['flat_index']
+                                      ] if map['flat_index'] != None else 0
         event.args['tar'] = map['tar']
         event.depend = map.get('depend') if map.get('depend') \
             else depend
@@ -110,7 +111,8 @@ def _auto_generate_shield(proto: Event, info: Dict[str, List[float]], mappings: 
         event.time = proto.time + time_bias
         event.lv = proto.lv
         event.scaler = info[lv][map['index']]
-        event.args['flat'] = info[lv][map['flat_index']]
+        event.args['flat'] = info[lv][map['flat_index']
+                                      ] if map['flat_index'] != None else 0
         event.depend = map.get('depend') if map.get('depend') \
             else depend
         event.actiontime = proto.actiontime if proto.actiontime \
@@ -2169,6 +2171,23 @@ def Hutao_A(event: Event, inter) -> List[Event]:
             '13': [0.980352, 1.008946, 1.2765, 1.372493, 0.695722, 0.736, 1.797312, 2.8428, 25, 1.367856, 2.735132, 3.416328],
             '14': [1.028304, 1.058296, 1.338938, 1.439626, 0.729752, 0.772, 1.885224, 2.98185, 25, 1.434762, 2.868916, 3.583431],
             '15': [1.076256, 1.107647, 1.401375, 1.506758, 0.763782, 0.808, 1.973136, 3.1209, 25, 1.501668, 3.0027, 3.750534]}
+    # 1, 2, 3, 4, 5.1, 5.2, 6, z, sta, p, lp, hp
+    lv = str(inter.characters[event.source].attr.normatk_lv)
+    keys = __dmg_keys+['damage_type', 'view']
+    config = [['A1', 0, 13,      0, '胡桃:普攻:第1段', DamageType.NORMAL_ATK, True],
+              ['A2', 1, 29-13,   0, '胡桃:普攻:第2段', DamageType.NORMAL_ATK, True],
+              ['A3', 2, 54-29,   0, '胡桃:普攻:第3段', DamageType.NORMAL_ATK, True],
+              ['A4', 3, 90-54,   0, '胡桃:普攻:第4段', DamageType.NORMAL_ATK, True],
+              ['A5', 4, 120-90,  0, '胡桃:普攻:第5段', DamageType.NORMAL_ATK, True],
+              ['A5', 5, 134-90,  0, '胡桃:普攻:第5段', DamageType.NORMAL_ATK, False],
+              ['A6', 6, 173-234, 0, '胡桃:普攻:第6段', DamageType.NORMAL_ATK, True],
+              ['Z',  7, 50,      0, '胡桃:重击',       DamageType.CHARGED_ATK, True],
+              ['P',  9, 30,      0, '胡桃:下落期间', DamageType.PLUNGING_ATK, False],
+              ['LP', 10, 30,     0, '胡桃:低空下落', DamageType.PLUNGING_ATK, True],
+              ['HP', 11, 30,     0, '胡桃:低空下落', DamageType.PLUNGING_ATK, True]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.PHYSICAL, DamageType.NORMAL_ATK)
 
 
 def Hutao_E(event: Event, inter) -> List[Event]:
@@ -2187,6 +2206,13 @@ def Hutao_E(event: Event, inter) -> List[Event]:
             '13': [0.3, 0.07153, 1.36, 8, 9, 16, 4],
             '14': [0.3, 0.07452, 1.44, 8, 9, 16, 4],
             '15': [0.3, 0.07751, 1.52, 8, 9, 16, 4]}
+    # debuff, buff, e, dur.e, dur, cd, thresh
+    lv = str(inter.characters[event.source].attr.elemskill_lv)
+    keys = __dmg_keys+['view']
+    config = [['E', 2, 42, 16*60, '胡桃:元素战技:血梅香', False]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.PYRO, DamageType.ELEM_SKILL)
 
 
 def Hutao_Q(event: Event, inter) -> List[Event]:
@@ -2205,6 +2231,19 @@ def Hutao_Q(event: Event, inter) -> List[Event]:
             '13': [5.64776, 7.0597, 0.116625, 0.1555, 15, 60, 0.5],
             '14': [5.88384, 7.3548, 0.1215, 0.162, 15, 60, 0.5],
             '15': [6.11992, 7.6499, 0.126375, 0.1685, 15, 60, 0.5]}
+    # q, q1, h, h1, cd, energy
+    lv = str(inter.characters[event.source].attr.elemburst_lv)
+    config = [['Q',  0, 130, 15*60, '胡桃:元素爆发'],
+              ['Q1', 1, 130, 15*60, '胡桃:元素爆发:低血量']]
+    mappings = [dict(zip(__dmg_keys, c)) for c in config]
+    config2 = [['Q',  2, None, event.source, '胡桃:元素爆发:安神秘法'],
+               ['Q1', 3, None, event.source, '胡桃:元素爆发:安神秘法低血量']]
+    mappings2 = [dict(zip(__heal_keys, c)) for c in config2]
+    if event.type == EventType.DAMAGE:
+        return _auto_generate_dmg(event, info, mappings, lv,
+                                  ElementType.PYRO, DamageType.ELEM_BURST)
+    elif event.type == EventType.HEALTH:
+        return _auto_generate_heal(event, info, mappings2, lv)
 
 
 def Kazuha_A(event: Event, inter) -> List[Event]:
@@ -3141,6 +3180,33 @@ def Yelan_A(event: Event, inter) -> List[Event]:
             '13': [0.97438, 0.93524, 1.236, 0.77868, 1.0506, 2.635, 0.24599, 1.361248, 2.721919, 3.399824],
             '14': [1.03114, 0.98972, 1.308, 0.82404, 1.1118, 2.79, 0.26046, 1.440544, 2.880478, 3.597872],
             '15': [1.0879, 1.0442, 1.38, 0.8694, 1.173, 2.945, 0.27493, 1.51984, 3.039036, 3.79592]}
+    # 1, 2, 3, 4, R, Z, asp, p, lp, hp
+    lv = str(inter.characters[event.source].attr.normatk_lv)
+    keys = __dmg_keys+['damage_type', 'view', 'elem_type', 'depend']
+    config = [['A1',  0,  14,      0, '夜兰:普攻:第1段', DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A2',  1,  29-14,   0, '夜兰:普攻:第2段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL, 'ATK'],
+              ['A3',  2,  54-29,   0, '夜兰:普攻:第3段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL, 'ATK'],
+              ['A4',  3,  88-54,   0, '夜兰:普攻:第4段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL, 'ATK'],
+              ['A4',  3,  102-54,  0, '夜兰:普攻:第4段',
+                  DamageType.NORMAL_ATK, False, ElementType.PHYSICAL, 'ATK'],
+              ['R',   4,  15,      0, '夜兰:瞄准射击',
+                  DamageType.CHARGED_ATK, True, ElementType.PHYSICAL, 'ATK'],
+              ['Z',   5,  86,      0, '夜兰:重击',
+                  DamageType.CHARGED_ATK, True, ElementType.HYDRO, 'ATK'],
+              ['ASP', 6,  32,      0, '夜兰:破局矢',
+                  DamageType.CHARGED_ATK, True, ElementType.HYDRO, 'HP'],
+              ['P',   7,  30,      0, '夜兰:下落期间',
+                  DamageType.PLUNGING_ATK, False, ElementType.PHYSICAL, 'ATK'],
+              ['LP',  8,  30,      0, '夜兰:低空下落',
+                  DamageType.PLUNGING_ATK, True, ElementType.PHYSICAL, 'ATK'],
+              ['HP',  9,  30,      0, '夜兰:低空下落',
+                  DamageType.PLUNGING_ATK, True, ElementType.PHYSICAL, 'ATK']]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.PHYSICAL, DamageType.NORMAL_ATK)
 
 
 def Yelan_E(event: Event, inter) -> List[Event]:
@@ -3159,6 +3225,12 @@ def Yelan_E(event: Event, inter) -> List[Event]:
             '13': [0.480539, 0.34, 3, 10],
             '14': [0.508806, 0.34, 3, 10],
             '15': [0.537073, 0.34, 3, 10]}
+    # e, buff, dur, cd
+    lv = str(inter.characters[event.source].attr.elemskill_lv)
+    config = [['E', 0, 40, 10*60, '夜兰:元素战技']]
+    mappings = [dict(zip(__dmg_keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.HYDRO, DamageType.ELEM_SKILL, depend='HP')
 
 
 def Yelan_Q(event: Event, inter) -> List[Event]:
@@ -3177,6 +3249,41 @@ def Yelan_Q(event: Event, inter) -> List[Event]:
             '13': [0.155295, 0.10353, 15, 18, 70],
             '14': [0.16443, 0.10962, 15, 18, 70],
             '15': [0.173565, 0.11571, 15, 18, 70]}
+    # q, q1, dur, cd, energy
+    lv = str(inter.characters[event.source].attr.elemburst_lv)
+    keys = __dmg_keys+['view']
+    config = [['Q',   0, 91, 18*60, '夜兰:元素爆发', True],
+              ['Q1',  1, 0,  18*60, '夜兰:玄掷玲珑', False],
+              ['Q1',  1, 0,  18*60, '夜兰:玄掷玲珑', False],
+              ['Q1',  1, 0,  18*60, '夜兰:玄掷玲珑', False]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.HYDRO, DamageType.ELEM_BURST, depend='HP')
+
+
+def Yelan_CXDMG(event: Event, inter) -> List[Event]:
+    info = {'1':  [1.56*0.11576, 0.14],
+            '2':  [1.56*0.124442, 0.14],
+            '3':  [1.56*0.133124, 0.14],
+            '4':  [1.56*0.1447, 0.14],
+            '5':  [1.56*0.153382, 0.14],
+            '6':  [1.56*0.162064, 0.14],
+            '7':  [1.56*0.17364, 0.14],
+            '8':  [1.56*0.185216, 0.14],
+            '9':  [1.56*0.196792, 0.14],
+            '10': [1.56*0.208368, 0.14],
+            '11': [1.56*0.219944, 0.14],
+            '12': [1.56*0.23152, 0.14],
+            '13': [1.56*0.24599, 0.14],
+            '14': [1.56*0.26046, 0.14],
+            '15': [1.56*0.27493, 0.14]}
+    lv = str(inter.characters[event.source].attr.normatk_lv)
+    keys = __dmg_keys+['damage_type']
+    config = [['CX6',  0, 0, 0, '夜兰:六命:破局矢', DamageType.CHARGED_ATK],
+              ['CX2',  1, 0, 0, '夜兰:二命:玄掷玲珑', DamageType.ELEM_BURST]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.HYDRO, DamageType.CHARGED_ATK, depend='HP', view=False)
 
 
 def Aloy_A(event: Event, inter) -> List[Event]:
@@ -3954,7 +4061,27 @@ def React_All(event: Event, inter) -> List[Event]:
         ReactType.HYPERBLOOM: (3, ElementType.DENDRO),
         ReactType.BURGEON: (3, ElementType.DENDRO)
     }
+    constraint = {
+        ReactType.SUPERCONDUCT: (ElementType.ELECTRO, ElementType.CRYO),
+        ReactType.SWIRL: (ElementType.ANEMO,),
+        ReactType.ELECTRO_CHARGED: (ElementType.ELECTRO, ElementType.HYDRO),
+        ReactType.SHATTERED: (ElementType.HYDRO, ElementType.CRYO),
+        ReactType.OVERLOADED: (ElementType.ELECTRO, ElementType.PYRO),
+        ReactType.BURNING: (ElementType.PYRO, ElementType.DENDRO),
+        ReactType.BLOOM: (ElementType.HYDRO, ElementType.DENDRO),
+        ReactType.HYPERBLOOM: (ElementType.HYDRO, 
+                               ElementType.DENDRO, ElementType.ELECTRO),
+        ReactType.BURGEON: (ElementType.HYDRO,
+                            ElementType.DENDRO, ElementType.PYRO)
+    }
     react: ReactType = ReactType[event.name]
+    elem = [c.base.element for c in inter.characters.values()]
+    if react == ReactType.SWIRL:
+        constraint[react] += (event.args['elem'],)
+    for e in constraint[react]:
+        if elem.count(e.value) == 0:
+            return []
+
     event.args['trans'] = react
     if react != ReactType.SWIRL:
         event.args['elem'] = react_scaler[react][1]
@@ -3986,12 +4113,18 @@ skill_dict: Dict[str, Callable[[Event, object], List[Event]]] = \
     'Bennett-A': Bennett_A, 'Bennett-E': Bennett_E, 'Bennett-Q': Bennett_Q,
     # Tartaglia
     'Tartaglia-A': Tartaglia_A, 'Tartaglia-E': Tartaglia_E, 'Tartaglia-Q': Tartaglia_Q,
+    # Hutao
+    'Hutao-A': Hutao_A, 'Hutao-E': Hutao_E, 'Hutao-Q': Hutao_Q,
     # Kazuha
     'Kazuha-A': Kazuha_A, 'Kazuha-E': Kazuha_E, 'Kazuha-Q': Kazuha_Q,
     # Shogun
     'Shogun-A': Shogun_A, 'Shogun-E': Shogun_E, 'Shogun-Q': Shogun_Q,
     # Kokomi
     'Kokomi-A': Kokomi_A, 'Kokomi-E': Kokomi_E, 'Kokomi-Q': Kokomi_Q, 'Kokomi-CX': Kokomi_A,
+    # Sara
+    'Sara-A': Sara_A, 'Sara-E': Sara_E, 'Sara-Q': Sara_Q,
+    # Yelan
+    'Yelan-A': Yelan_A, 'Yelan-E': Yelan_E, 'Yelan-Q': Yelan_Q, 'Yelan-CX': Yelan_CXDMG,
     # Shenhe
     'Shenhe-A': Shenhe_A, 'Shenhe-E': Shenhe_E, 'Shenhe-Q': Shenhe_Q,
     # ---weapon---

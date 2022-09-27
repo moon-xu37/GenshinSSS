@@ -27,6 +27,12 @@ class Char(object):
     def disconnect(self, buff):
         self.attr.disconnect(buff)
 
+    def __getitem__(self, key: str) -> DNode:
+        if hasattr(self.attr, key):
+            return deepcopy(getattr(self.attr, key))
+        else:
+            return DNode()
+
 
 class CharBase(object):
     def __init__(self, name: str, lv: int, asc: bool):
@@ -37,13 +43,13 @@ class CharBase(object):
         self.element: int = 0
         self.region: int = 0
         self.energy: int = 0
-        self.lv: int = 0
+        self.lv:  int = 0
         self.asc: int = 0
         self.asc_info: Dict[str, List[float]] = {}
-        self.HP_BASE: float = 0
+        self.HP_BASE:  float = 0
         self.ATK_BASE: float = 0
         self.DEF_BASE: float = 0
-        self.HP: float = 0
+        self.HP:  float = 0
         self.ATK: float = 0
         self.DEF: float = 0
         self.EXTRA: List[str, float] = ['', 0]
@@ -108,31 +114,31 @@ class CharAttr(object):
         # panel attributes
         self.ATK: DNode = self.tree_expr('ATK')
         self.DEF: DNode = self.tree_expr('DEF')
-        self.HP: DNode = self.tree_expr('HP')
-        self.EM = DNode('Total EM', '+')
-        self.ER = DNode('Total ER', '+')
-        self.CRIT_RATE = DNode('Total CRIT_RATE', '+')
-        self.CRIT_DMG = DNode('Total CRIT_DMG', '+')
-        self.HEAL_BONUS = DNode('Total HEAL_BONUS', '+')
-        self.HEAL_INCOME = DNode('Total HEAL_INCOME', '+')
-        self.SHIELD_STRENGTH = DNode('Total SHIELD_STRENGTH', '+')
-        self.CD_REDUCTION = DNode('Total CD_REDUCTION', '+')
-        self.ANEMO_DMG = DNode('Total ANEMO_DMG', '+')
-        self.GEO_DMG = DNode('Total GEO_DMG', '+')
-        self.ELECTRO_DMG = DNode('Total ELECTRO_DMG', '+')
-        self.HYDRO_DMG = DNode('Total HYDRO_DMG', '+')
-        self.PYRO_DMG = DNode('Total PYRO_DMG', '+')
-        self.CRYO_DMG = DNode('Total CRYO_DMG', '+')
-        self.DENDRO_DMG = DNode('Total DENDRO_DMG', '+')
-        self.PHYSICAL_DMG = DNode('Total PHYSICAL_DMG', '+')
+        self.HP:  DNode = self.tree_expr('HP')
+        self.EM: DNode = DNode('Total EM', '+')
+        self.ER: DNode = DNode('Total ER', '+')
+        self.CRIT_RATE:       DNode = DNode('Total CRIT_RATE',       '+')
+        self.CRIT_DMG:        DNode = DNode('Total CRIT_DMG',        '+')
+        self.HEAL_BONUS:      DNode = DNode('Total HEAL_BONUS',      '+')
+        self.HEAL_INCOME:     DNode = DNode('Total HEAL_INCOME',     '+')
+        self.SHIELD_STRENGTH: DNode = DNode('Total SHIELD_STRENGTH', '+')
+        self.CD_REDUCTION:    DNode = DNode('Total CD_REDUCTION',    '+')
+        self.ANEMO_DMG:       DNode = DNode('Total ANEMO_DMG',       '+')
+        self.GEO_DMG:         DNode = DNode('Total GEO_DMG',         '+')
+        self.ELECTRO_DMG:     DNode = DNode('Total ELECTRO_DMG',     '+')
+        self.HYDRO_DMG:       DNode = DNode('Total HYDRO_DMG',       '+')
+        self.PYRO_DMG:        DNode = DNode('Total PYRO_DMG',        '+')
+        self.CRYO_DMG:        DNode = DNode('Total CRYO_DMG',        '+')
+        self.DENDRO_DMG:      DNode = DNode('Total DENDRO_DMG',      '+')
+        self.PHYSICAL_DMG:    DNode = DNode('Total PHYSICAL_DMG',    '+')
         # other attributes
-        self.ATK_SPD: float = 0
+        self.ATK_SPD:  float = 0
         self.MOVE_SPD: float = 0
         self.INTERRUPT_RES: float = 0
         self.DMG_REDUCTION: float = 0
         # talent attributes
         self.cx_lv: int = cx
-        self.normatk_lv: int = a_
+        self.normatk_lv:   int = a_
         self.elemskill_lv: int = e_
         self.elemburst_lv: int = q_
         self.name: str = ''
@@ -310,5 +316,11 @@ class Panel(object):
         for k in self.__dict__.keys():
             if target and k != target:
                 continue
-            self.__dict__[k] = deepcopy(getattr(character.attr, k))
+            self.__dict__[k] = character[k]
             self.__dict__[k].key = k
+
+    def __getitem__(self, key: str) -> DNode:
+        if hasattr(self, key):
+            return deepcopy(getattr(self, key))
+        else:
+            return DNode()

@@ -15,14 +15,18 @@ class Artifact(object):
     def __init__(self, p1: str, p2: str, p3: str, main: List[str]):
         self.piece2_1: SetType = SetType[p1] if p1 else SetType.NONE
         self.piece2_2: SetType = SetType[p2] if p2 else SetType.NONE
-        self.piece4: SetType = SetType[p3] if p3 else SetType.NONE
+        self.piece4:   SetType = SetType[p3] if p3 else SetType.NONE
         self.main: List[str] = main
-        self.sub: List[int] = [0]*10
-        self.owner: str = ''
+        self.sub:  List[int] = [0]*10
+        self.owner:  str = ''
         self.rarity: str = '5'  # TODO
 
     def set_owner(self, owner):
         self.owner = owner
+
+    def set_rarity(self, rarity):
+        if rarity == '4' or rarity == '5':
+            self.rarity = rarity
 
     def use_std(self, std: str):
         if not self.owner or self.owner not in std_data[std]:

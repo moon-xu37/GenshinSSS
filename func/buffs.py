@@ -22,8 +22,8 @@ class _DamageElemChecker(object):
         self.elem = list(elem)
 
     def __call__(self, damage: Nums) -> bool:
-        return (isinstance(damage, Damage) or isinstance(damage, TransDamage)) and \
-            (not self.elem or damage.elem_type in self.elem)
+        return (isinstance(damage, Damage) or isinstance(damage, TransDamage)) \
+            and (not self.elem or damage.elem_type in self.elem)
 
 
 class _DamageCounter(object):
@@ -33,10 +33,10 @@ class _DamageCounter(object):
         self.types = list(types)
 
     def __call__(self, damage: Nums) -> bool:
-        if self.num > 0 and\
-            (isinstance(damage, Damage) or isinstance(damage, TransDamage)) and \
-            (self.elem == ElementType.NONE or damage.elem_type == self.elem) and\
-                (not self.types or damage.damage_type in self.types):
+        if self.num > 0 \
+                and (isinstance(damage, Damage) or isinstance(damage, TransDamage)) \
+                and (self.elem == ElementType.NONE or damage.elem_type == self.elem) \
+                and (not self.types or damage.damage_type in self.types):
             self.num -= 1
             return True
         else:
@@ -56,9 +56,9 @@ class _ReactTypeChecker(object):
         self.react = list(react)
 
     def __call__(self, damage: Nums) -> bool:
-        return (isinstance(damage, Damage) and damage.react_type in self.react) or \
-            (isinstance(damage, TransDamage) and (damage.react_type in self.react or
-                                                  damage.sub_react in self.react))
+        return (isinstance(damage, Damage) and damage.react_type in self.react) \
+            or (isinstance(damage, TransDamage) and (damage.react_type in self.react or
+                                                     damage.sub_react in self.react))
 
 # ---formatter---
 
@@ -82,7 +82,7 @@ def _auto_generate_buff(proto: Buff, mappings: List[Dict],
                     name=name, family=family, source=source, **proto.args)
         buff.begin = proto.begin+time_bias
         if map['dur'] != 0:
-            buff.end = proto.begin+map['dur'] if not proto.end else proto.end
+            buff.end = buff.begin+map['dur'] if not proto.end else proto.end
         else:
             buff.begin, buff.end = 0, 1_000_000
         if buff.type == BuffType.DMG:
@@ -295,6 +295,63 @@ def Bennett_SK(buff: Buff, inter) -> List[Buff]:
     return _auto_generate_buff(buff, mappings)
 
 
+def Hutao_PS(buff: Buff, inter) -> List[Buff]:
+    adds = [[('Total CRIT_RATE', DNode('Hutao Passive1', '%', 12))],
+            [('Total PYRO_DMG', DNode('Hutao Passive2', '%', 33))]]
+    config = [['PS2', BuffType.ATTR, 5*60, buff.source,
+               'PYRO_DMG', adds[1], '胡桃:天赋二:血之灶火']]
+    for char in inter.characters:
+        if char == buff.source:
+            continue
+        config.append(['PS1', BuffType.ATTR, 8*60, char,
+                       'CRIT_RATE', adds[0], '胡桃:天赋一:蝶隐之时'])
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
+def Hutao_CX(buff: Buff, inter) -> List[Buff]:
+    cx2 = inter.characters[buff.source].attr.cx_lv >= 2
+    func = _DamageTypeChecker(DamageType.ELEM_SKILL)
+    adds = [[('Basic Multiplier', DNode('Hutao Constellation2', '*')),
+             ('Hutao Constellation2', DNode('Hutao Constellation4 Scaler', '%', 10)),
+             ('Hutao Constellation2', inter.characters[buff.source].attr.HP)],
+            [('Total CRIT_RATE', DNode('Hutao Constellation4', '%', 12))],
+            [('Total CRIT_RATE', DNode('Hutao Constellation6', '', 1))]]
+    config = [['AUTO', BuffType.DMG, 0, buff.source,
+               func,  adds[0], '胡桃:二命:最不安神晴又复雨'],
+              ['CX6', BuffType.ATTR, 10*60, buff.source,
+               'CRIT_RATE',  adds[2], '胡桃:六命:幽蝶能留一缕芳']]
+    for char in inter.characters:
+        if char == buff.source:
+            continue
+        config.append(['CX4', BuffType.ATTR, 15*60, char,
+                       'CRIT_RATE',  adds[1], '胡桃:四命:伴君眠花房'])
+    if not cx2:
+        config.pop(0)
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
+def Hutao_SK(buff: Buff, inter) -> List[Buff]:
+    info = [0.03841, 0.04071, 0.04301, 0.046, 0.0483, 0.0506, 0.05359,
+            0.05658, 0.05957, 0.06256, 0.06555, 0.06854, 0.07153, 0.07452, 0.07751]
+    lv = inter.characters[buff.source].attr.elemskill_lv
+    base_atk = inter.characters[buff.source].attr.ATK.find('ATK Base').value
+    adds = [[('Bonus Flat',
+              DNode('Hutao ELEM_BURST buff', 'THRESH')),
+             ('Hutao ELEM_BURST buff',
+              DNode('Hutao ELEM_BURST buff Threshold', '', base_atk*4)),
+             ('Hutao ELEM_BURST buff',
+              DNode('Hutao ELEM_BURST Bonus', '*')),
+             ('Hutao ELEM_BURST Bonus',
+              DNode('Hutao ELEM_BURST Scaler', '', info[lv-1])),
+             ('Hutao ELEM_BURST Bonus', deepcopy(inter.characters[buff.source].attr.HP))]]
+    config = [['E', BuffType.ATTR, 9*60, buff.source,
+               'ATK', adds[0], '胡桃:元素战技:彼岸蝶舞']]
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
 def Kazuha_PS(buff: Buff, inter) -> List[Buff]:
     elem = buff.args.get('elem', ElementType.NONE)
     buff.name += f'_{elem.name}'
@@ -472,6 +529,42 @@ def Sara_SK(buff: Buff, inter) -> List[Buff]:
         config.append(['E', BuffType.DMG, 6*60, inter.stage,
                        func, adds[1], '九条裟罗:六命:我界', False])
     mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
+def Yelan_PS(buff: Buff, inter) -> List[Buff]:
+    info = [6, 12, 18, 30]
+    stack = int(buff.args.get('stack', '0'))
+    cnt = len(set([c.base.element for c in inter.characters.values()]))
+    func = _DamageTypeChecker()
+    adds = [
+        [('Bonus Scalers', DNode('Yelan Passive1', '%', info[cnt-1]))],
+        [('Damage Bonus', DNode('Yelan Passive2', '%', 1+3.5*stack))]]
+    keys = __buff_keys+['view']
+    config = [['AUTO', BuffType.ATTR, 0, buff.source,
+               'HP', adds[0], f'夜兰:天赋一:猜先有方:{cnt}层', True],
+              ['PS2', BuffType.DMG, 60, 'stage',
+               func, adds[1], f'夜兰:天赋二:{stack}层', True]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    if not buff.args.get('seq', False):
+        return _auto_generate_buff(buff, mappings)
+    else:
+        buffs = []
+        for i in range(15):
+            adds2 = [[('Damage Bonus', DNode('Yelan Passive2', '%', 1+3.5*i))]]
+            config2 = [['PS2', BuffType.DMG, 60, 'stage',
+                        func, adds2[0], f'夜兰:天赋二:{i}层']]
+            mappings2 = [dict(zip(__buff_keys, c)) for c in config2]
+            buffs.extend(_auto_generate_buff(buff, mappings2, time_bias=i*60))
+        return buffs
+
+
+def Yelan_CX(buff: Buff, inter) -> List[Buff]:
+    stack = int(buff.args.get('stack', '1'))
+    adds = [[('Bonus Scalers', DNode('Yelan Constellation4', '%', 10*stack))]]
+    config = [['CX4', BuffType.ATTR, 25*60, 'all',
+               'HP', adds[0], '夜兰:四命:接树移花']]
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
     return _auto_generate_buff(buff, mappings)
 
 
@@ -1995,19 +2088,23 @@ def GILDED_DREAMS_PS(buff: Buff, inter) -> List[Buff]:
 def Resonance_All(buff: Buff, inter) -> List[Buff]:
     protos = []
     result = []
+    elem = [c.base.element for c in inter.characters.values()]
     if buff.name == 'AUTO':
-        elem = [c.base.element for c in inter.characters.values()]
         for i in range(1, 8):
             if elem.count(i) >= 2:
                 proto = deepcopy(buff)
                 proto.name += '_'+ElementType(i).name
                 protos.append(proto)
-    elif buff.name == 'GEO' or buff.name == 'DENDRO':
+    elif buff.name == 'GEO' and elem.count(ElementType.GEO.value) >= 2:
         proto = deepcopy(buff)
         proto.name += buff.args.get('stack', '1')
         protos.append(proto)
-    elif buff.name == 'CRYO':
+    elif buff.name == 'CRYO' and elem.count(ElementType.CRYO.value) >= 2:
         proto = deepcopy(buff)
+        protos.append(proto)
+    elif buff.name == 'DENDRO' and elem.count(ElementType.DENDRO.value) >= 2:
+        proto = deepcopy(buff)
+        proto.name += buff.args.get('stack', '1')
         protos.append(proto)
 
     func1 = _DamageTypeChecker()
@@ -2064,6 +2161,9 @@ buff_dict: Dict[str, Callable[[Buff, object], List[Buff]]] = \
     'Zhongli-PS': Zhongli_PS,
     'Zhongli-SK': Zhongli_SK,
     'Bennett-SK': Bennett_SK,
+    'Hutao-PS': Hutao_PS,
+    'Hutao-CX': Hutao_CX,
+    'Hutao-SK': Hutao_SK,
     'Kazuha-PS': Kazuha_PS,
     'Kazuha-CX': Kazuha_CX,
     'Shogun-PS': Shogun_PS,
@@ -2072,6 +2172,8 @@ buff_dict: Dict[str, Callable[[Buff, object], List[Buff]]] = \
     'Kokomi-PS': Kokomi_PS,
     'Kokomi-CX': Kokomi_CX,
     'Kokomi-SK': Kokomi_SK,
+    'Yelan-PS': Yelan_PS,
+    'Yelan-CX': Yelan_CX,
     'Shenhe-CX': Shenhe_CX,
     'Shenhe-SK': Shenhe_SK,
     # weapon
