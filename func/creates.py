@@ -52,6 +52,13 @@ def Bennett_Creation(event: Event, inter) -> Event:
     return _auto_generate_creation(event, [12*60], [True], ['班尼特:创造物:鼓舞领域'])
 
 
+def Ganyu_Creation(event: Event, inter) -> Event:
+    if event.family == 'E':
+        return _auto_generate_creation(event, [6*60+1], [False], ['甘雨:创造物:冰莲'])
+    elif event.family == 'Q':
+        return _auto_generate_creation(event, [15*60], [True], ['甘雨:创造物:冰灵珠'])
+
+
 def Kazuha_Creation(event: Event, inter) -> Event:
     return _auto_generate_creation(event, [9*60], [True], ['枫原万叶:创造物:流风秋野'])
 
@@ -89,6 +96,8 @@ create_dict: Dict[str, Callable[[Event, object], Event]] = \
         'Klee->Q': Klee_Creation,
         'Zhongli->E': Zhongli_Creation,
         'Bennett->Q': Bennett_Creation,
+        'Ganyu->E': Ganyu_Creation,
+        'Ganyu->Q': Ganyu_Creation,
         'Kazuha->Q': Kazuha_Creation,
         'Kokomi->E': Kokomi_Creation,
         'Sara->E': Sara_Creation,

@@ -39,7 +39,8 @@ def _auto_generate_dmg(proto: Event, info: Dict[str, List[float]], mappings: Lis
         event.mode = proto.mode
         event.time = proto.time + time_bias
         event.lv = proto.lv
-        event.scaler = info[lv][map['index']]
+        event.scaler = info[lv][map['index']]\
+            if map['index'] != None else 0
         event.depend = map.get('depend') if 'depend' in map \
             else depend
         event.actiontime = proto.actiontime if proto.actiontime \
@@ -77,8 +78,8 @@ def _auto_generate_heal(proto: Event, info: Dict[str, List[float]], mappings: Li
         event.time = proto.time + time_bias
         event.lv = proto.lv
         event.scaler = info[lv][map['index']]
-        event.args['flat'] = info[lv][map['flat_index']
-                                      ] if map['flat_index'] != None else 0
+        event.args['flat'] = info[lv][map['flat_index']]\
+            if map['flat_index'] != None else 0
         event.args['tar'] = map['tar']
         event.depend = map.get('depend') if map.get('depend') \
             else depend
@@ -111,8 +112,8 @@ def _auto_generate_shield(proto: Event, info: Dict[str, List[float]], mappings: 
         event.time = proto.time + time_bias
         event.lv = proto.lv
         event.scaler = info[lv][map['index']]
-        event.args['flat'] = info[lv][map['flat_index']
-                                      ] if map['flat_index'] != None else 0
+        event.args['flat'] = info[lv][map['flat_index']]\
+            if map['flat_index'] != None else 0
         event.depend = map.get('depend') if map.get('depend') \
             else depend
         event.actiontime = proto.actiontime if proto.actiontime \
@@ -1735,6 +1736,38 @@ def Ganyu_A(event: Event, inter) -> List[Event]:
             '13': [0.797372, 0.894613, 1.143116, 1.143116, 1.212265, 1.447803, 1.0506, 2.635, 2.72, 4.624, 1.361248, 2.721919, 3.399824],
             '14': [0.857039, 0.961556, 1.228655, 1.228655, 1.302979, 1.556142, 1.1118, 2.79, 2.88, 4.896, 1.440544, 2.880478, 3.597872],
             '15': [0.922131, 1.034586, 1.321971, 1.321971, 1.401939, 1.67433, 1.173, 2.945, 3.04, 5.168, 1.51984, 3.039036, 3.79592]}
+    # 1, 2, 3, 4, 5, 6, R, Z, ASP1, ASP2, p, lp, hp
+    lv = str(inter.characters[event.source].attr.normatk_lv)
+    keys = __dmg_keys+['damage_type', 'view', 'elem_type']
+    config = [['A1', 0,  18,      0, '甘雨:普攻:第1段',
+               DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A2', 1,  43-18,   0, '甘雨:普攻:第2段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A3', 2,  73-43,   0, '甘雨:普攻:第3段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A4', 3,  117-73,  0, '甘雨:普攻:第4段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A5', 4,  153-117, 0, '甘雨:普攻:第5段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A6', 5,  190-153, 0, '甘雨:普攻:第6段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['R',  6,  15,      0, '甘雨:瞄准射击',
+                  DamageType.CHARGED_ATK, True, ElementType.PHYSICAL],
+              ['Z',  7,  74,      0, '甘雨:重击',
+                  DamageType.CHARGED_ATK, True, ElementType.CRYO],
+              ['ASP1', 8, 103,    0, '甘雨:霜华矢',
+                  DamageType.CHARGED_ATK, True, ElementType.CRYO],
+              ['ASP2', 9, 12,     0, '甘雨:霜华绽发',
+                  DamageType.CHARGED_ATK, False, ElementType.CRYO],
+              ['P',  10, 30,      0, '甘雨:下落期间',
+                  DamageType.PLUNGING_ATK, False, ElementType.PHYSICAL],
+              ['LP', 11, 30,      0, '甘雨:低空下落',
+                  DamageType.PLUNGING_ATK, True, ElementType.PHYSICAL],
+              ['HP', 12, 30,      0, '甘雨:低空下落',
+                  DamageType.PLUNGING_ATK, True, ElementType.PHYSICAL]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.PHYSICAL, DamageType.NORMAL_ATK)
 
 
 def Ganyu_E(event: Event, inter) -> List[Event]:
@@ -1753,6 +1786,12 @@ def Ganyu_E(event: Event, inter) -> List[Event]:
             '13': [2.55, 2.805, 6, 10],
             '14': [2.7, 2.97, 6, 10],
             '15': [2.85, 3.135, 6, 10]}
+    # hp, e, dur, cd
+    lv = str(inter.characters[event.source].attr.elemskill_lv)
+    config = [['E', 1, 34, 10*60, '甘雨:元素战技']]
+    mappings = [dict(zip(__dmg_keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.CRYO, DamageType.ELEM_SKILL, snapshot='Ganyu->E')
 
 
 def Ganyu_Q(event: Event, inter) -> List[Event]:
@@ -1771,6 +1810,27 @@ def Ganyu_Q(event: Event, inter) -> List[Event]:
             '13': [1.49328, 15, 15, 60],
             '14': [1.58112, 15, 15, 60],
             '15': [1.66896, 15, 15, 60]}
+    # q, dur, cd, energy
+    lv = str(inter.characters[event.source].attr.elemburst_lv)
+    keys = __dmg_keys+['view']
+    config = [['Q', 0, 102, 15*60, '甘雨:元素爆发', False]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    if not event.args.get('seq', False):
+        return _auto_generate_dmg(event, info, mappings, lv,
+                                  ElementType.CRYO, DamageType.ELEM_BURST, snapshot='Ganyu->Q')
+    else:
+        events = []
+        proto = deepcopy(event)
+        proto.name = 'Q'
+        for i in range(50):
+            if i == 0:
+                proto.args['view'] = True
+            t = i*18
+            events.extend(_auto_generate_dmg(event, info, mappings, lv,
+                                             ElementType.CRYO, DamageType.ELEM_BURST, time_bias=t, snapshot='Ganyu->Q'))
+            if i == 0:
+                proto.args.pop('view')
+        return events
 
 
 def Albedo_A(event: Event, inter) -> List[Event]:
@@ -2432,6 +2492,38 @@ def Yoimiya_A(event: Event, inter) -> List[Event]:
             '13': [0.7452, 1.42968, 1.858584, 0.9706, 2.21352, 1.0506, 2.635, 0.3485, 1.361248, 2.721919, 3.399824],
             '14': [0.78165, 1.49961, 1.949493, 1.018075, 2.32179, 1.1118, 2.79, 0.369, 1.440544, 2.880478, 3.597872],
             '15': [0.8181, 1.56954, 2.040402, 1.06555, 2.43006, 1.173, 2.945, 0.3895, 1.51984, 3.039036, 3.79592]}
+    # 1(2), 2, 3, 4(2), 5, R, Z, ASP, p, lp, hp
+    lv = str(inter.characters[event.source].attr.normatk_lv)
+    keys = __dmg_keys+['damage_type', 'view', 'elem_type']
+    config = [['A1', 0,  16,      0, '宵宫:普攻:第1段',
+               DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A1', 0,  24,      0, '宵宫:普攻:第1段',
+               DamageType.NORMAL_ATK, False, ElementType.PHYSICAL],
+              ['A2', 1,  50-24,   0, '宵宫:普攻:第2段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A3', 2,  81-50,   0, '宵宫:普攻:第3段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A4', 3,  106-81,  0, '宵宫:普攻:第4段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['A4', 3,  121-81,  0, '宵宫:普攻:第4段',
+                  DamageType.NORMAL_ATK, False, ElementType.PHYSICAL],
+              ['A5', 4,  154-121, 0, '宵宫:普攻:第5段',
+                  DamageType.NORMAL_ATK, True, ElementType.PHYSICAL],
+              ['R',  5,  15,      0, '宵宫:瞄准射击',
+                  DamageType.CHARGED_ATK, True, ElementType.PHYSICAL],
+              ['Z',  6,  86,      0, '宵宫:重击',
+                  DamageType.CHARGED_ATK, True, ElementType.PYRO],
+              ['ASP', 7, 18,      0, '宵宫:焰硝矢',
+                  DamageType.CHARGED_ATK, False, ElementType.PYRO],
+              ['P',  8, 30,       0, '宵宫:下落期间',
+                  DamageType.PLUNGING_ATK, False, ElementType.PHYSICAL],
+              ['LP', 9, 30,       0, '宵宫:低空下落',
+                  DamageType.PLUNGING_ATK, True, ElementType.PHYSICAL],
+              ['HP', 10, 30,      0, '宵宫:低空下落',
+                  DamageType.PLUNGING_ATK, True, ElementType.PHYSICAL]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.PHYSICAL, DamageType.NORMAL_ATK)
 
 
 def Yoimiya_E(event: Event, inter) -> List[Event]:
@@ -2450,6 +2542,41 @@ def Yoimiya_E(event: Event, inter) -> List[Event]:
             '13': [0.70597, 10, 18, 1.70597],
             '14': [0.73548, 10, 18, 1.73548],
             '15': [0.76499, 10, 18, 1.76499]}
+    # buff, dur, cd, e
+    info2 = {'1': [0.3564, 0.68376, 0.888888, 0.4642, 1.05864, 0.4386, 1.24, 0.164, 0.568288, 1.136335, 1.419344],
+             '2': [0.3807, 0.73038, 0.949494, 0.49585, 1.13082, 0.4743, 1.333, 0.1763, 0.614544, 1.228828, 1.534872],
+             '3': [0.405, 0.777, 1.0101, 0.5275, 1.203, 0.51, 1.426, 0.1886, 0.6608, 1.32132, 1.6504],
+             '4': [0.4374, 0.83916, 1.090908, 0.5697, 1.29924, 0.561, 1.55, 0.205, 0.72688, 1.453452, 1.81544],
+             '5': [0.4617, 0.88578, 1.151514, 0.60135, 1.37142, 0.5967, 1.643, 0.2173, 0.773136, 1.545944, 1.930968],
+             '6': [0.49005, 0.94017, 1.222221, 0.638275, 1.45563, 0.6375, 1.736, 0.2296, 0.826, 1.65165, 2.063],
+             '7': [0.5265, 1.0101, 1.31313, 0.68575, 1.5639, 0.6936, 1.86, 0.246, 0.898688, 1.796995, 2.244544],
+             '8': [0.56295, 1.08003, 1.404039, 0.733225, 1.67217, 0.7497, 1.984, 0.2624, 0.971376, 1.94234, 2.426088],
+             '9': [0.5994, 1.14996, 1.494948, 0.7807, 1.78044, 0.8058, 2.108, 0.2788, 1.044064, 2.087686, 2.607632],
+             '10': [0.63585, 1.21989, 1.585857, 0.828175, 1.88871, 0.867, 2.232, 0.2952, 1.12336, 2.246244, 2.80568],
+             '11': [0.6723, 1.28982, 1.676766, 0.87565, 1.99698, 0.9282, 2.356, 0.3116, 1.202656, 2.404802, 3.003728],
+             '12': [0.70875, 1.35975, 1.767675, 0.923125, 2.10525, 0.9894, 2.48, 0.328, 1.281952, 2.563361, 3.201776],
+             '13': [0.7452, 1.42968, 1.858584, 0.9706, 2.21352, 1.0506, 2.635, 0.3485, 1.361248, 2.721919, 3.399824],
+             '14': [0.78165, 1.49961, 1.949493, 1.018075, 2.32179, 1.1118, 2.79, 0.369, 1.440544, 2.880478, 3.597872],
+             '15': [0.8181, 1.56954, 2.040402, 1.06555, 2.43006, 1.173, 2.945, 0.3895, 1.51984, 3.039036, 3.79592]}
+    lv_normal = str(inter.characters[event.source].attr.normatk_lv)
+    lv = str(inter.characters[event.source].attr.elemskill_lv)
+    cx6 = event.args.get('cx', False)
+    info3 = {lv: [s*info[lv][3] for s in info2[lv_normal]]}
+    info4 = {lv: [s*info[lv][3]*0.6 for s in info2[lv_normal]]}
+    keys = __dmg_keys+['damage_type']
+    config = [['E', None, 23,   18*60, '宵宫:元素战技', DamageType.ELEM_SKILL],
+              ['EA1', 0,  16,       0, '宵宫:炽焰箭:第1段', DamageType.NORMAL_ATK],
+              ['EA2', 1,  50-24,    0, '宵宫:炽焰箭:第2段', DamageType.NORMAL_ATK],
+              ['EA3', 2,  81-50,    0, '宵宫:炽焰箭:第3段', DamageType.NORMAL_ATK],
+              ['EA4', 3,  106-81,   0, '宵宫:炽焰箭:第4段', DamageType.NORMAL_ATK],
+              ['EA5', 4,  154-121,  0, '宵宫:炽焰箭:第5段', DamageType.NORMAL_ATK]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    if not cx6:
+        return _auto_generate_dmg(event, info3, mappings, lv,
+                                  ElementType.PYRO, DamageType.ELEM_SKILL)
+    else:
+        return _auto_generate_dmg(event, info4, mappings, lv,
+                                  ElementType.PYRO, DamageType.ELEM_SKILL)
 
 
 def Yoimiya_Q(event: Event, inter) -> List[Event]:
@@ -2468,6 +2595,13 @@ def Yoimiya_Q(event: Event, inter) -> List[Event]:
             '13': [2.703, 2.5925, 2, 10, 15, 60],
             '14': [2.862, 2.745, 2, 10, 15, 60],
             '15': [3.021, 2.8975, 2, 10, 15, 60]}
+    lv = str(inter.characters[event.source].attr.elemburst_lv)
+    keys = __dmg_keys+['view']
+    config = [['Q',   0, 115, 15*60, '宵宫:元素爆发', True],
+              ['Q1',  1, 0,   15*60, '宵宫:元素爆发:琉金火光', False]]
+    mappings = [dict(zip(keys, c)) for c in config]
+    return _auto_generate_dmg(event, info, mappings, lv,
+                              ElementType.PYRO, DamageType.ELEM_BURST)
 
 
 def Thoma_A(event: Event, inter) -> List[Event]:
@@ -4069,7 +4203,7 @@ def React_All(event: Event, inter) -> List[Event]:
         ReactType.OVERLOADED: (ElementType.ELECTRO, ElementType.PYRO),
         ReactType.BURNING: (ElementType.PYRO, ElementType.DENDRO),
         ReactType.BLOOM: (ElementType.HYDRO, ElementType.DENDRO),
-        ReactType.HYPERBLOOM: (ElementType.HYDRO, 
+        ReactType.HYPERBLOOM: (ElementType.HYDRO,
                                ElementType.DENDRO, ElementType.ELECTRO),
         ReactType.BURGEON: (ElementType.HYDRO,
                             ElementType.DENDRO, ElementType.PYRO)
@@ -4113,10 +4247,14 @@ skill_dict: Dict[str, Callable[[Event, object], List[Event]]] = \
     'Bennett-A': Bennett_A, 'Bennett-E': Bennett_E, 'Bennett-Q': Bennett_Q,
     # Tartaglia
     'Tartaglia-A': Tartaglia_A, 'Tartaglia-E': Tartaglia_E, 'Tartaglia-Q': Tartaglia_Q,
+    # Ganyu
+    'Ganyu-A': Ganyu_A, 'Ganyu-E': Ganyu_E, 'Ganyu-Q': Ganyu_Q,
     # Hutao
     'Hutao-A': Hutao_A, 'Hutao-E': Hutao_E, 'Hutao-Q': Hutao_Q,
     # Kazuha
     'Kazuha-A': Kazuha_A, 'Kazuha-E': Kazuha_E, 'Kazuha-Q': Kazuha_Q,
+    # Yoimiya
+    'Yoimiya-A': Yoimiya_A, 'Yoimiya-E': Yoimiya_E, 'Yoimiya-Q': Yoimiya_Q,
     # Shogun
     'Shogun-A': Shogun_A, 'Shogun-E': Shogun_E, 'Shogun-Q': Shogun_Q,
     # Kokomi

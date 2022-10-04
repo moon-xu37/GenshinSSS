@@ -295,6 +295,32 @@ def Bennett_SK(buff: Buff, inter) -> List[Buff]:
     return _auto_generate_buff(buff, mappings)
 
 
+def Ganyu_PS(buff: Buff, inter) -> List[Buff]:
+    func = _DamageTypeChecker(DamageType.CHARGED_ATK)
+    adds = [[('Critical Rate', DNode('Ganyu Passive1', '%', 20))],
+            [('Total CRYO_DMG', DNode('Ganyu Passive2', '%', 20))]]
+    config = [['PS1', BuffType.DMG, 5*60, buff.source,
+               func, adds[0], '甘雨:天赋一:唯此一心'],
+              ['PS2', BuffType.ATTR, 15*60, 'stage',
+               'CRYO_DMG', adds[1], '甘雨:天赋二:天地交泰']]
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
+def Ganyu_CX(buff: Buff, inter) -> List[Buff]:
+    stack = int(buff.args.get('stack', '1'))
+    func1 = _ResistanceChecker(ElementType.CRYO)
+    func2 = _DamageTypeChecker()
+    adds = [[('Resistance Debuff', DNode('Ganyu Constellation1', '%', -15))],
+            [('Damage Bonus', DNode('Ganyu Constellation4', '%', 5*stack))]]
+    config = [['CX1', BuffType.DMG, 6*60, 'all',
+               func1,  adds[0], '甘雨:一命:饮露'],
+              ['CX4', BuffType.DMG, 3*60, 'all',
+               func2,  adds[1], '甘雨:四命:西狩']]
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
 def Hutao_PS(buff: Buff, inter) -> List[Buff]:
     adds = [[('Total CRIT_RATE', DNode('Hutao Passive1', '%', 12))],
             [('Total PYRO_DMG', DNode('Hutao Passive2', '%', 33))]]
@@ -386,6 +412,32 @@ def Kazuha_CX(buff: Buff, inter) -> List[Buff]:
         config.pop(1)
     if stack == 2:
         config.pop(0)
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
+def Yoimiya_PS(buff: Buff, inter) -> List[Buff]:
+    stack = int(buff.args.get('stack', '1'))
+    adds = [[('Total PYRO_DMG', DNode('Yoimiya Passive1', '%', 2*stack))],
+            [('Bonus Scalers', DNode('Yoimiya Passive2', '%', 10+stack))]]
+    config = [['PS1', BuffType.ATTR, 3*60, buff.source,
+               'PYRO_DMG', adds[0], '宵宫:天赋一:袖火百景图']]
+    for char in inter.characters:
+        if char == buff.source:
+            continue
+        config.append(['PS2', BuffType.ATTR, 15*60, char,
+                       'ATK', adds[1], '宵宫:天赋二:炎昼风物诗'])
+    mappings = [dict(zip(__buff_keys, c)) for c in config]
+    return _auto_generate_buff(buff, mappings)
+
+
+def Yoimiya_CX(buff: Buff, inter) -> List[Buff]:
+    adds = [[('Bonus Scalers', DNode('Yoimiya Constellation1', '%', 20))],
+            [('Total PYRO_DMG', DNode('Yoimiya Constellation2', '%', 25))]]
+    config = [['CX1', BuffType.ATTR, 20*60, buff.source,
+               'ATK',  adds[0], '宵宫:一命:赤玉琉金'],
+              ['CX2', BuffType.ATTR, 6*60, buff.source,
+               'PYRO_DMG',  adds[1], '宵宫:二命:万灯送火']]
     mappings = [dict(zip(__buff_keys, c)) for c in config]
     return _auto_generate_buff(buff, mappings)
 
@@ -2161,11 +2213,15 @@ buff_dict: Dict[str, Callable[[Buff, object], List[Buff]]] = \
     'Zhongli-PS': Zhongli_PS,
     'Zhongli-SK': Zhongli_SK,
     'Bennett-SK': Bennett_SK,
+    'Ganyu-PS': Ganyu_PS,
+    'Ganyu-CX': Ganyu_CX,
     'Hutao-PS': Hutao_PS,
     'Hutao-CX': Hutao_CX,
     'Hutao-SK': Hutao_SK,
     'Kazuha-PS': Kazuha_PS,
     'Kazuha-CX': Kazuha_CX,
+    'Yoimiya-PS': Yoimiya_PS,
+    'Yoimiya-CX': Yoimiya_CX,
     'Shogun-PS': Shogun_PS,
     'Shogun-CX': Shogun_CX,
     'Shogun-SK': Shogun_SK,
